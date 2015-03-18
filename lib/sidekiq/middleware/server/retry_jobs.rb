@@ -94,9 +94,15 @@ module Sidekiq
             queue
           end
 
+          error_message_max_length = if (msg['error_message_max_length'].to_i != 0)
+            msg['error_message_max_length'].to_i - 1
+          else
+            10_000
+          end
+          
           # App code can stuff all sorts of crazy binary data into the error message
           # that won't convert to JSON.
-          m = exception.message[0..10_000]
+          m = exception.message[0..error_message_max_length]
           if m.respond_to?(:scrub!)
             m.force_encoding("utf-8")
             m.scrub!

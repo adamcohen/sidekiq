@@ -137,6 +137,19 @@ class TestRetry < Sidekiq::Test
       @redis.verify
     end
 
+    it 'truncates the error message' do
+      @redis.expect :zadd, 1, ['retry', String, String]
+      msg = { 'class' => 'Bob', 'args' => [1,2,'foo'], 'retry' => true,
+             'error_message_max_length' => 50 }
+      handler = Sidekiq::Middleware::Server::RetryJobs.new
+      assert_raises RuntimeError do
+        handler.call(worker, msg, 'default') do
+          raise "Lorem ipsum dolor sit amet"*100
+        end
+      end
+      assert_equal 50, msg["error_message"].length
+    end
+
     it 'shuts down without retrying work-in-progress, which will resume' do
       @redis.expect :zadd, 1, ['retry', String, String]
       msg = { 'class' => 'Bob', 'args' => [1,2,'foo'], 'retry' => true }
